@@ -71,9 +71,14 @@ class Character():
     def calcProficiencyBonus(self):
         return math.ceil(1 + (1/4) * self.level)
 
-    
+    #todo
+    def generatePriorityArray():
+        priority = []
+        for i in range(numStat):
+            priority.append(i)
+        return priority
 
-    def specialTraits(self):
+    def racialTraits(self):
         pass
         #name = self.race['name']
         #if ('Elf' in name):
@@ -91,6 +96,12 @@ class Character():
                 #Fleet of Foot
                 #Mask of the Wild
                 #pass
+
+    def classTraits(self):
+        pass
+    
+    def backgroundTraits(self):
+        pass
 
     #Adds proficiency in a skill. Pass an optional parameter of 2 for expertise rather than regular proficiency.
     def addSkillProficiency(self, skill, level=1):
@@ -116,6 +127,7 @@ class Character():
         print(self.skills)
         print(self.proficiencyBonus)
 
+
 def rollStat():
     stats = []
     for _ in range(4):
@@ -128,12 +140,6 @@ def generateStatArray():
     for _ in range(numStat):
         stats.append(rollStat())
     return stats
-
-def generatePriorityArray():
-    priority = []
-    for i in range(numStat):
-        priority.append(i)
-    return priority
 
 def fetchRaces():
     db = sqlConnect()
