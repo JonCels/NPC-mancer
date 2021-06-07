@@ -1,20 +1,30 @@
 import random
 from enum import Enum
 import mysql.connector
+import math
 
 playableClasses = ['Artificer', 'Barbarian', 'Bard', 'Cleric', 'Druid', 'Fighter', 'Monk', 'Paladin', 'Ranger', 'Rogue', 'Sorcerer', 'Warlock', 'Wizard']
+
 playableBackgrounds = []
+
 playableRaces = []
 selectableSubraces = []
-abilities = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma']
-savingThrows = abilities
+abilitiesList = []
 
+savingThrows = abilitiesList
+
+skillsList = []
 numProf = 18
 numStat = 6
 
+selectedRace = {}
+selectedSubrace = {}
+
 class Character():
-    def __init__(self, race, dndClass, background, level):
-        self.race = race
+    def __init__(self, race, subrace, dndClass, background, level):
+        self.race = race['race']
+        self.walkSpeed = race['walk_speed']
+        self.subrace = subrace['subrace']
         self.dndClass = dndClass
         self.background = background
         self.stats = self.placeStats()
@@ -22,34 +32,28 @@ class Character():
         self.level = level
         for _ in range(level - 1):
             self.levelUp()
-        self.skills = self.calcSkills()
-        
+        self.skills = self.placeSkills()
+        self.proficiencyBonus = self.calcProficiencyBonus()
 
+    #Generates an array of ability scores and places them according to common ability priorities based on the character class
     def placeStats(self):
         statArray = generateStatArray()
         #priorityArray = generatePriorityArray(self.class)
-        priorityArray = [6, 0, 2, 3, 1, 5] #todo: generatePriorityArray function
+        #todo: generatePriorityDict function
+        prioDict = {'Strength' : 5, 'Dexterity': 0, 'Constitution': 2, 'Intelligence': 3, 'Wisdom': 1, 'Charisma': 4}
         stats = {}
 
         for _ in range(numStat):
-            currPrio = min(priorityArray)
-            indexPrio = priorityArray.index(currPrio)
-            priorityArray[indexPrio] = numStat + 1 #removing from array would cause indexing issues. This sets the priority above the number of skills, so it will not be reached
+            #Get next highest priority ability
+            currAbility = min(prioDict, key=prioDict.get)
+            prioDict.pop(currAbility)
+            
+            #Get next highest score
+            currScore = max(statArray)
+            statArray.remove(currScore)
 
-            currStat = max(statArray)
-            indexStat = statArray.index(currStat)
-            statArray[indexStat] = 0 #removing from array would cause indexing issues. This sets the stat to 0, so it will not be reached
-
-            stats[abilities[indexPrio]] = currStat
-
-        if (self.race['stat1id'] != None):
-            stats[abilities[self.race['stat1id'] - 1]] += self.race['bonus1']
-        
-        if (self.race['stat2id'] != None):
-            stats[abilities[self.race['stat2id'] - 1]] += self.race['bonus2']
-
-        if (self.race['stat3id'] != None):
-            stats[abilities[self.race['stat3id'] - 1]] += self.race['bonus3']
+            #Assign score to ability
+            stats[currAbility] = currScore
         return stats
     
     def calcModifiers(self):
@@ -58,50 +62,40 @@ class Character():
             modifiers[stat] = ((self.stats[stat] // 2) - 5)
         return modifiers
 
-    def calcSkills(self):
-        prof = {}
-        prof['Acrobatics']      = [0, self.modifiers['Dexterity']]
-        prof['Animal Handling'] = [0, self.modifiers['Wisdom']]
-        prof['Arcana']          = [0, self.modifiers['Intelligence']]
-        prof['Athletics']       = [0, self.modifiers['Strength']]
-        prof['Deception']       = [0, self.modifiers['Charisma']]
-        prof['History']         = [0, self.modifiers['Intelligence']]
-        prof['Insight']         = [0, self.modifiers['Wisdom']]
-        prof['Intimidation']    = [0, self.modifiers['Charisma']]
-        prof['Investigation']   = [0, self.modifiers['Intelligence']]
-        prof['Medicine']        = [0, self.modifiers['Wisdom']]
-        prof['Nature']          = [0, self.modifiers['Intelligence']]
-        prof['Perception']      = [0, self.modifiers['Wisdom']]
-        prof['Performance']     = [0, self.modifiers['Charisma']]
-        prof['Persuasion']      = [0, self.modifiers['Charisma']]
-        prof['Religion']        = [0, self.modifiers['Intelligence']]
-        prof['Sleight of Hand'] = [0, self.modifiers['Dexterity']]
-        prof['Stealth']         = [0, self.modifiers['Dexterity']]
-        prof['Survival']        = [0, self.modifiers['Wisdom']]
-        self.calcProficiencies()
-        return prof
+    def placeSkills(self):
+        skills = {}
+        for skill in skillsList:
+            skills[skill[0]] = [0, self.modifiers[getAbility(skill[1])]]
+        return skills
+
+    def calcProficiencyBonus(self):
+        return math.ceil(1 + (1/4) * self.level)
+
+    
 
     def specialTraits(self):
-        name = self.race['name']
-        if ('Elf' in name):
+        pass
+        #name = self.race['name']
+        #if ('Elf' in name):
             #Darkvision
             #Fey Ancestry
             #Trance
             #Languages
-            if ('High' in name):
+            #if ('High' in name):
                 #Elf Weapon Training
                 #Cantrip
                 #Extra language
-                pass
-            elif ('Wood' in name):
+                #pass
+            #elif ('Wood' in name):
                 #Elf Weapon Training
                 #Fleet of Foot
                 #Mask of the Wild
-                pass
-            
+                #pass
 
-    def addSkillProficiency(self, skill, proficiency):
-        pass
+    #Adds proficiency in a skill. Pass an optional parameter of 2 for expertise rather than regular proficiency.
+    def addSkillProficiency(self, skill, level=1):
+        self.skills[skill][0] = level
+        self.skills[skill][1] += self.proficiencyBonus * level
 
     def addLanguage(self, language):
         pass
@@ -110,28 +104,30 @@ class Character():
         pass
 
     def levelUp(self):
-        self.dndClass.levelUp()
+        pass
     
     def print(self):
-        print(self.race['name'])
+        print(self.race)
+        print(self.subrace)
         print(self.dndClass, self.level)
         print(self.background)
         print(self.stats)
         print(self.modifiers)
         print(self.skills)
+        print(self.proficiencyBonus)
+
         
 
 def rollStat():
     stats = []
-    for i in range(4):
+    for _ in range(4):
         stats.append(random.randint(1, 6))
     stats.remove(min(stats))
     return sum(stats)
 
-
 def generateStatArray(): 
     stats = []
-    for i in range(numStat):
+    for _ in range(numStat):
         stats.append(rollStat())
     return stats
 
@@ -142,23 +138,63 @@ def generatePriorityArray():
     return priority
 
 def fetchRaces():
-    db = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        passwd="jDAN0921",
-        auth_plugin='mysql_native_password',
-        database='npc_mancer_db'
-    )
+    db = sqlConnect()
 
     mycursor = db.cursor(dictionary=True)
     mycursor.execute("SELECT * FROM RACES")
     for race in mycursor:
-        playableRaces.append(race);
+        playableRaces.append(race)
 
-def selectRace():
-    pass
+#Should be called after selectRace()
+def fetchSubraces():
+    db = sqlConnect()
 
-def fetchSubraces(race):
+    selectedRaceID = selectedRace['rid']
+    mycursor = db.cursor(dictionary=True)
+    query = "SELECT subrace FROM subraces WHERE rid =" + str(selectedRaceID)
+    mycursor.execute(query)
+
+    for subrace in mycursor:
+        selectableSubraces.append(subrace)
+
+def fetchabilitiesList():
+    db = sqlConnect()
+
+    mycursor = db.cursor(dictionary=True)
+    query = "SELECT * FROM abilities"
+    mycursor.execute(query)
+
+    for ability in mycursor:
+        abilitiesList.append(ability)
+
+def fetchSkills():
+    db = sqlConnect()
+
+    mycursor = db.cursor()
+    query = "SELECT skill, abilityID FROM skills"
+    mycursor.execute(query)
+
+    for skill in mycursor:
+        skillsList.append(skill)
+        
+def getRace(name):
+    return list(filter(lambda race : race['race'] == name, playableRaces))[0]
+
+def getSubrace(name):
+    return list(filter(lambda subrace : subrace['subrace'] == name, selectableSubraces))[0]
+
+def getAbility(id):
+    return list(filter(lambda ability : ability['aid'] == id, abilitiesList))[0]['ability']
+
+def selectRace(race):
+    global selectedRace 
+    selectedRace = getRace(race)
+
+def selectSubrace(subrace):
+    global selectedSubrace
+    selectedSubrace = getSubrace(subrace)
+
+def sqlConnect():
     db = mysql.connector.connect(
         host="localhost",
         user="root",
@@ -166,15 +202,21 @@ def fetchSubraces(race):
         auth_plugin='mysql_native_password',
         database='npc_mancer_db'
     )
+    return db
 
-    mycursor = db.cursor(dictionary=True)
-    mycursor.execute("SELECT subrace FROM SUBRACES WHERE ", race)
-
-def getRace(name):
-    return list(filter(lambda race : race['name'] == name, playableRaces))[0]
-
+fetchabilitiesList()
+fetchSkills()
 
 fetchRaces()
-steve = Character(getRace("High Elf"), 'ranger', 'urchin', 1)
+selectRace("Elf")
+
+fetchSubraces()
+selectSubrace("High Elf")
+
+
+steve = Character(selectedRace, selectedSubrace, 'ranger', 'urchin', 9)
+steve.print()
+
+steve.addSkillProficiency("Religion")
 steve.print()
 
