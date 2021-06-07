@@ -3,9 +3,6 @@ from enum import Enum
 import mysql.connector
 import math
 
-playableClasses = ['Artificer', 'Barbarian', 'Bard', 'Cleric', 'Druid', 'Fighter', 'Monk', 'Paladin', 'Ranger', 'Rogue', 'Sorcerer', 'Warlock', 'Wizard']
-
-playableBackgrounds = []
 
 playableRaces = []
 selectableSubraces = []
@@ -13,6 +10,7 @@ abilitiesList = []
 classesList = []
 selectableClassSpecs = []
 skillsList = []
+backgroundsList = []
 
 numProf = 18
 numStat = 6
@@ -28,7 +26,7 @@ class Character():
         self.subrace = subrace
         self.dndClass = dndClass[0]['class']
         self.dndClassSpec = dndClass[1]['class']
-        self.background = background
+        self.background = background['background']
         self.stats = self.placeStats()
         self.modifiers = self.calcModifiers()
         self.level = level
@@ -199,6 +197,16 @@ def fetchClassSpecs():
     for classSpec in mycursor:
         selectableClassSpecs.append(classSpec)
 
+def fetchBackgrounds():
+    db = sqlConnect()
+
+    mycursor = db.cursor(dictionary=True)
+    query = "SELECT background, skillProficiency1ID, skillProficiency2ID FROM backgrounds"
+    mycursor.execute(query)
+
+    for background in mycursor:
+        backgroundsList.append(background)
+
 def sqlConnect():
     db = mysql.connector.connect(
         host="localhost",
@@ -230,6 +238,10 @@ def selectClassSpec(dndClassSpec):
     global selectedClassSpec
     selectedClassSpec = getClassSpec(dndClassSpec)
 
+def selectBackground(background):
+    global selectedBackground
+    selectedBackground = getBackground(background)
+
 
 def getRace(name):
     return list(filter(lambda race : race['race'] == name, playableRaces))[0]
@@ -246,11 +258,15 @@ def getClass(name):
 def getClassSpec(name):
     return list(filter(lambda dndClassSpec : dndClassSpec['class'] == name, selectableClassSpecs))[0]
 
+def getBackground(name):
+    return list(filter(lambda background : background['background'] == name, backgroundsList))[0]
+
+
 fetchAbilities()
 fetchSkills()
 fetchRaces()
 fetchClasses()
-
+fetchBackgrounds()
 
 selectRace("Elf")
 
@@ -262,6 +278,8 @@ selectClass("Ranger")
 fetchClassSpecs()
 selectClassSpec("Ranger (Dex)")
 
-steve = Character(selectedRace, selectedSubrace, [selectedClass, selectedClassSpec], 'urchin', 9)
+selectBackground("Urchin")
+
+steve = Character(selectedRace, selectedSubrace, [selectedClass, selectedClassSpec], selectedBackground, 9)
 steve.print()
 
