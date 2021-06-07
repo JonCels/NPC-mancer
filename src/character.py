@@ -10,22 +10,24 @@ playableBackgrounds = []
 playableRaces = []
 selectableSubraces = []
 abilitiesList = []
-
-savingThrows = abilitiesList
-
+classesList = []
+selectableClassSpecs = []
 skillsList = []
+
 numProf = 18
 numStat = 6
 
 selectedRace = {}
-selectedSubrace = {}
-
+selectedSubrace = ""
+selectedClass = {}
+selectedClassSpec = {}
 class Character():
     def __init__(self, race, subrace, dndClass, background, level):
         self.race = race['race']
         self.walkSpeed = race['walk_speed']
-        self.subrace = subrace['subrace']
-        self.dndClass = dndClass
+        self.subrace = subrace
+        self.dndClass = dndClass[0]['class']
+        self.dndClassSpec = dndClass[1]['class']
         self.background = background
         self.stats = self.placeStats()
         self.modifiers = self.calcModifiers()
@@ -109,14 +111,12 @@ class Character():
     def print(self):
         print(self.race)
         print(self.subrace)
-        print(self.dndClass, self.level)
+        print(self.dndClassSpec + ",", self.level)
         print(self.background)
         print(self.stats)
         print(self.modifiers)
         print(self.skills)
         print(self.proficiencyBonus)
-
-        
 
 def rollStat():
     stats = []
@@ -157,7 +157,7 @@ def fetchSubraces():
     for subrace in mycursor:
         selectableSubraces.append(subrace)
 
-def fetchabilitiesList():
+def fetchAbilities():
     db = sqlConnect()
 
     mycursor = db.cursor(dictionary=True)
@@ -176,23 +176,28 @@ def fetchSkills():
 
     for skill in mycursor:
         skillsList.append(skill)
-        
-def getRace(name):
-    return list(filter(lambda race : race['race'] == name, playableRaces))[0]
 
-def getSubrace(name):
-    return list(filter(lambda subrace : subrace['subrace'] == name, selectableSubraces))[0]
+def fetchClasses():
+    db = sqlConnect()
 
-def getAbility(id):
-    return list(filter(lambda ability : ability['aid'] == id, abilitiesList))[0]['ability']
+    mycursor = db.cursor(dictionary=True)
+    query = "SELECT * FROM classes"
+    mycursor.execute(query)
 
-def selectRace(race):
-    global selectedRace 
-    selectedRace = getRace(race)
+    for dndClass in mycursor:
+        classesList.append(dndClass)
 
-def selectSubrace(subrace):
-    global selectedSubrace
-    selectedSubrace = getSubrace(subrace)
+#Should be called after selectClass()
+def fetchClassSpecs():
+    db = sqlConnect()
+
+    selectedClassID = selectedClass['cid']
+    mycursor = db.cursor(dictionary=True)
+    query = "SELECT class, primaryAbilityID, secondaryAbilityID FROM classspecs WHERE cid =" + str(selectedClassID)
+    mycursor.execute(query)
+
+    for classSpec in mycursor:
+        selectableClassSpecs.append(classSpec)
 
 def sqlConnect():
     db = mysql.connector.connect(
@@ -204,19 +209,59 @@ def sqlConnect():
     )
     return db
 
-fetchabilitiesList()
-fetchSkills()
 
+#Should be called after fetch method for data
+def selectRace(race):
+    global selectedRace 
+    selectedRace = getRace(race)
+
+#Should be called after fetch method for data
+def selectSubrace(subrace):
+    global selectedSubrace
+    selectedSubrace = getSubrace(subrace)
+
+#Should be called after fetch method for data
+def selectClass(dndClass):
+    global selectedClass
+    selectedClass = getClass(dndClass)
+
+#Should be called after fetch method for data
+def selectClassSpec(dndClassSpec):
+    global selectedClassSpec
+    selectedClassSpec = getClassSpec(dndClassSpec)
+
+
+def getRace(name):
+    return list(filter(lambda race : race['race'] == name, playableRaces))[0]
+
+def getSubrace(name):
+    return list(filter(lambda subrace : subrace['subrace'] == name, selectableSubraces))[0]['subrace']
+
+def getAbility(id):
+    return list(filter(lambda ability : ability['aid'] == id, abilitiesList))[0]['ability']
+
+def getClass(name):
+    return list(filter(lambda dndClass : dndClass['class'] == name, classesList))[0]
+
+def getClassSpec(name):
+    return list(filter(lambda dndClassSpec : dndClassSpec['class'] == name, selectableClassSpecs))[0]
+
+fetchAbilities()
+fetchSkills()
 fetchRaces()
+fetchClasses()
+
+
 selectRace("Elf")
 
 fetchSubraces()
 selectSubrace("High Elf")
 
+selectClass("Ranger")
 
-steve = Character(selectedRace, selectedSubrace, 'ranger', 'urchin', 9)
-steve.print()
+fetchClassSpecs()
+selectClassSpec("Ranger (Dex)")
 
-steve.addSkillProficiency("Religion")
+steve = Character(selectedRace, selectedSubrace, [selectedClass, selectedClassSpec], 'urchin', 9)
 steve.print()
 
