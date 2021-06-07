@@ -20,24 +20,36 @@ selectedRace = {}
 selectedSubrace = ""
 selectedClass = {}
 selectedClassSpec = {}
+selectedBackground = {}
 
 class Character():
     def __init__(self, race, dndClass, background, level):
         self.race = race[0]['race']
-        self.walkSpeed = race[0]['walk_speed']
         self.subrace = race[1]
         self.dndClass = dndClass[0]['class']
         self.dndClassSpec = dndClass[1]['class']
+        #subclass
         self.background = background['background']
+        self.level = level
+
         self.stats = self.placeStats()
         self.modifiers = self.calcModifiers()
-        self.initiative = self.modifiers['Dexterity']
-        self.level = level
-        for _ in range(level - 1):
-            self.levelUp()
+
         self.skills = self.placeSkills()
+        self.savingThrows = self.placeSavingThrows()
+
         self.proficiencyBonus = self.calcProficiencyBonus()
-        self.armour = self.selectArmour("Unarmoured")
+        self.selectArmour("Unarmoured")
+        self.initiative = self.modifiers['Dexterity']
+        self.walkSpeed = race[0]['walk_speed']
+        self.passivePerception = self.calcPassivePerception()
+
+        self.hitDice = dndClass[0]['hit_dice']
+        self.hp = self.calcHP()
+        self.numHitDice = self.level
+
+        self.backgroundTraits(background)
+        self.classTraits(dndClass)
 
     #Generates an array of ability scores and places them according to common ability priorities based on the character class
     def placeStats(self):
@@ -69,12 +81,34 @@ class Character():
     def placeSkills(self):
         skills = {}
         for skill in skillsList:
-            skills[skill[0]] = [0, self.modifiers[getAbility(skill[1])]]
+            skills[skill['skill']] = [0, self.modifiers[getAbility(skill['abilityID'])]]
         return skills
+
+    def placeSavingThrows(self):
+        savingThrows = {}
+        for savingThrow in abilitiesList:
+            savingThrows[savingThrow['ability']] = [0, self.modifiers[savingThrow['ability']]]
+        return savingThrows
 
     def calcProficiencyBonus(self):
         return math.ceil(1 + (1/4) * self.level)
 
+    def calcPassivePerception(self):
+        self.passivePerception = 10 + self.skills['Perception'][1]
+
+    def calcHP(self):
+        #hp = hit dice value + constitution
+        hp = self.hitDice + self.modifiers['Constitution']
+        return hp
+
+    def addHP(self, hp):
+        self.hp += hp
+
+    def levelUp(self):
+        #Add any ASI's taken
+        lvlHp = random.randint(1, self.hitDice) + self.modifiers['Constitution']
+        self.addHP(lvlHp)
+        
     #todo
     def generatePriorityArray():
         priority = []
@@ -101,16 +135,30 @@ class Character():
                 #Mask of the Wild
                 #pass
 
-    def classTraits(self):
-        pass
-    
-    def backgroundTraits(self):
-        pass
+    def classTraits(self, dndClass):
+        #Saving throw proficiencies
+        savingThrow1 = getAbility(dndClass[0]['saving_throw_1'])
+        savingThrow2 = getAbility(dndClass[0]['saving_throw_2'])
+        self.addSavingThrowProficiency(savingThrow1)
+        self.addSavingThrowProficiency(savingThrow2)
+
+    def backgroundTraits(self, background):
+        #Skill proficiencies
+        skill1 = getSkill(background['skillProficiency1ID'])
+        skill2 = getSkill(background['skillProficiency2ID'])
+        self.addSkillProficiency(skill1)
+        self.addSkillProficiency(skill2)
 
     #Adds proficiency in a skill. Pass an optional parameter of 2 for expertise rather than regular proficiency.
     def addSkillProficiency(self, skill, level=1):
         self.skills[skill][0] = level
         self.skills[skill][1] += self.proficiencyBonus * level
+        if (skill == "Perception"):
+            self.calcPassivePerception()
+
+    def addSavingThrowProficiency(self, savingThrow):
+        self.savingThrows[savingThrow][0] = 1
+        self.savingThrows[savingThrow][1] += self.proficiencyBonus
 
     def addLanguage(self, language):
         pass
@@ -126,6 +174,7 @@ class Character():
         ac += self.modifiers[getAbility(mod1)] if mod1 is not None else 0
         ac += self.modifiers[getAbility(mod2)] if mod2 is not None else 0
         self.ac = ac
+        self.armour = selectedArmour
         return selectedArmour
 
     def levelUp(self):
@@ -143,7 +192,11 @@ class Character():
         print(self.stats)
         print(self.modifiers)
         print(self.skills)
+        print(self.savingThrows)
         print(self.armour)
+        print(self.passivePerception)
+        print(self.hitDice)
+        print(self.hp)
  
 
 def rollStat():
@@ -192,8 +245,8 @@ def fetchAbilities():
 def fetchSkills():
     db = sqlConnect()
 
-    mycursor = db.cursor()
-    query = "SELECT skill, abilityID FROM skills"
+    mycursor = db.cursor(dictionary=True)
+    query = "SELECT * FROM skills"
     mycursor.execute(query)
 
     for skill in mycursor:
@@ -285,6 +338,9 @@ def getSubrace(name):
 def getAbility(id):
     return list(filter(lambda ability : ability['aid'] == id, abilitiesList))[0]['ability']
 
+def getSkill(id):
+    return list(filter(lambda skill : skill['sid'] == id, skillsList))[0]['skill']
+
 def getClass(name):
     return list(filter(lambda dndClass : dndClass['class'] == name, classesList))[0]
 
@@ -316,9 +372,10 @@ selectClassSpec("Ranger (Dex)")
 
 selectBackground("Urchin")
 
-
+print(skillsList)
 
 steve = Character([selectedRace, selectedSubrace], [selectedClass, selectedClassSpec], selectedBackground, 9)
+steve.addSkillProficiency("Perception")
 steve.print()
 
 
