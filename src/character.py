@@ -11,6 +11,7 @@ classesList = []
 selectableClassSpecs = []
 skillsList = []
 backgroundsList = []
+armoursList = []
 
 numProf = 18
 numStat = 6
@@ -19,21 +20,24 @@ selectedRace = {}
 selectedSubrace = ""
 selectedClass = {}
 selectedClassSpec = {}
+
 class Character():
-    def __init__(self, race, subrace, dndClass, background, level):
-        self.race = race['race']
-        self.walkSpeed = race['walk_speed']
-        self.subrace = subrace
+    def __init__(self, race, dndClass, background, level):
+        self.race = race[0]['race']
+        self.walkSpeed = race[0]['walk_speed']
+        self.subrace = race[1]
         self.dndClass = dndClass[0]['class']
         self.dndClassSpec = dndClass[1]['class']
         self.background = background['background']
         self.stats = self.placeStats()
         self.modifiers = self.calcModifiers()
+        self.initiative = self.modifiers['Dexterity']
         self.level = level
         for _ in range(level - 1):
             self.levelUp()
         self.skills = self.placeSkills()
         self.proficiencyBonus = self.calcProficiencyBonus()
+        self.armour = self.selectArmour("Unarmoured")
 
     #Generates an array of ability scores and places them according to common ability priorities based on the character class
     def placeStats(self):
@@ -113,6 +117,16 @@ class Character():
     
     def addEquipmentProficiency(self, equipment, proficiency):
         pass
+    
+    def selectArmour(self, armour):
+        selectedArmour = getArmour(armour)
+        ac = selectedArmour['AC_base']
+        mod1 = selectedArmour['AC_mod1']
+        mod2 = selectedArmour['AC_mod2']
+        ac += self.modifiers[getAbility(mod1)] if mod1 is not None else 0
+        ac += self.modifiers[getAbility(mod2)] if mod2 is not None else 0
+        self.ac = ac
+        return selectedArmour
 
     def levelUp(self):
         pass
@@ -122,11 +136,15 @@ class Character():
         print(self.subrace)
         print(self.dndClassSpec + ",", self.level)
         print(self.background)
+        print(self.initiative)
+        print(self.walkSpeed)
+        print(self.ac)
+        print(self.proficiencyBonus)
         print(self.stats)
         print(self.modifiers)
         print(self.skills)
-        print(self.proficiencyBonus)
-
+        print(self.armour)
+ 
 
 def rollStat():
     stats = []
@@ -213,6 +231,16 @@ def fetchBackgrounds():
     for background in mycursor:
         backgroundsList.append(background)
 
+def fetchArmours():
+    db = sqlConnect()
+
+    mycursor = db.cursor(dictionary=True)
+    query = "SELECT name, AC_base, AC_mod1, AC_mod2, classification FROM armour"
+    mycursor.execute(query)
+
+    for armour in mycursor:
+        armoursList.append(armour)
+
 def sqlConnect():
     db = mysql.connector.connect(
         host="localhost",
@@ -248,7 +276,6 @@ def selectBackground(background):
     global selectedBackground
     selectedBackground = getBackground(background)
 
-
 def getRace(name):
     return list(filter(lambda race : race['race'] == name, playableRaces))[0]
 
@@ -267,12 +294,15 @@ def getClassSpec(name):
 def getBackground(name):
     return list(filter(lambda background : background['background'] == name, backgroundsList))[0]
 
+def getArmour(name):
+    return list(filter(lambda armour : armour['name'] == name, armoursList))[0]
 
 fetchAbilities()
 fetchSkills()
 fetchRaces()
 fetchClasses()
 fetchBackgrounds()
+fetchArmours()
 
 selectRace("Elf")
 
@@ -286,6 +316,9 @@ selectClassSpec("Ranger (Dex)")
 
 selectBackground("Urchin")
 
-steve = Character(selectedRace, selectedSubrace, [selectedClass, selectedClassSpec], selectedBackground, 9)
+
+
+steve = Character([selectedRace, selectedSubrace], [selectedClass, selectedClassSpec], selectedBackground, 9)
 steve.print()
+
 
