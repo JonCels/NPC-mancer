@@ -584,6 +584,6 @@ selectBackground("Urchin")
 
 steve = Character([selectedRace, selectedSubrace], [selectedClass, selectedClassSpec], selectedBackground, 9)
 steve.addSkillProficiency("Perception")
-#steve.print()
+steve.print()
 
 
